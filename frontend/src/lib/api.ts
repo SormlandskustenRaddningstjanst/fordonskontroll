@@ -24,3 +24,37 @@ export async function startInspection(params: {
   if (error) throw error;
   return data;
 }
+
+export async function saveInspectionResult(params: {
+  inspectionId: string;
+  checklistItemId: string;
+  passed: boolean | null;
+  responseText?: string | null;
+  responseNumber?: number | null;
+  responseDate?: string | null;
+  responseOption?: string | null;
+  commentText?: string | null;
+}) {
+  const { data, error } = await supabase
+    .from("inspection_results")
+    .upsert(
+      {
+        inspection_id: params.inspectionId,
+        checklist_item_id: params.checklistItemId,
+        passed: params.passed,
+        response_text: params.responseText ?? null,
+        response_number: params.responseNumber ?? null,
+        response_date: params.responseDate ?? null,
+        response_option: params.responseOption ?? null,
+        comment_text: params.commentText ?? null,
+      },
+      {
+        onConflict: "inspection_id,checklist_item_id",
+      }
+    )
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
