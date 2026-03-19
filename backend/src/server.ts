@@ -26,3 +26,16 @@ app.post("/deviations", (req, res) => {
 app.listen(3000, () => {
   console.log("Server running on port 3000");
 });
+
+import { supabase } from "./config/supabase";
+
+app.get("/test-db", async (req, res) => {
+  const { data, error } = await supabase
+    .from("vehicles")
+    .select("*")
+    .limit(5);
+
+  if (error) return res.status(500).json(error);
+
+  res.json(data);
+});
