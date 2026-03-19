@@ -25,30 +25,57 @@ export default function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleLogin} style={{ padding: 16 }}>
-      <h2>Logga in</h2>
+    <div style={{ maxWidth: 420, margin: "40px auto", padding: 16 }}>
+      <h1>Fordonskontroll</h1>
+      <p>Logga in för att fortsätta.</p>
 
-      <input
-        type="email"
-        placeholder="E-post"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        style={{ display: "block", marginBottom: 12, width: "100%", padding: 12 }}
-      />
+      <form onSubmit={handleLogin}>
+        <input
+          type="email"
+          placeholder="E-post"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          style={{
+            width: "100%",
+            padding: 14,
+            marginBottom: 12,
+            borderRadius: 8,
+            border: "1px solid #ccc",
+          }}
+        />
 
-      <input
-        type="password"
-        placeholder="Lösenord"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        style={{ display: "block", marginBottom: 12, width: "100%", padding: 12 }}
-      />
+        <input
+          type="password"
+          placeholder="Lösenord"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          style={{
+            width: "100%",
+            padding: 14,
+            marginBottom: 12,
+            borderRadius: 8,
+            border: "1px solid #ccc",
+          }}
+        />
 
-      <button type="submit" disabled={loading} style={{ padding: 12, width: "100%" }}>
-        {loading ? "Loggar in..." : "Logga in"}
-      </button>
+        <button
+          type="submit"
+          disabled={loading}
+          style={{
+            width: "100%",
+            padding: 14,
+            borderRadius: 8,
+            border: "none",
+            fontWeight: 600,
+          }}
+        >
+          {loading ? "Loggar in..." : "Logga in"}
+        </button>
 
-      {errorText ? <p style={{ color: "red" }}>{errorText}</p> : null}
-    </form>
+        {errorText ? (
+          <p style={{ color: "crimson", marginTop: 12 }}>{errorText}</p>
+        ) : null}
+      </form>
+    </div>
   );
 }
