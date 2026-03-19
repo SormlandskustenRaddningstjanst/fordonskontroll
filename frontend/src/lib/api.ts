@@ -58,3 +58,11 @@ export async function saveInspectionResult(params: {
   if (error) throw error;
   return data;
 }
+
+export async function completeInspection(inspectionId: string) {
+  const { error } = await supabase.rpc("complete_inspection", {
+    p_inspection_id: inspectionId,
+  });
+
+  if (error) throw error;
+}
