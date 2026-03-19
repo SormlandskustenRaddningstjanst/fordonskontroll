@@ -1,30 +1,28 @@
-# Fordonskontroll
+# Fordonskontroll mobile app
 
-App för fordons- och materialkontroller inom räddningstjänst.
+Mobilvänlig webbapp för fordons- och materialkontroller.
 
-## Funktioner
-- Daglig kontroll
-- Veckokontroll
-- Månadskontroll
-- Kvartalskontroll
-- Avvikelser
-- Instruktioner och video per kontrollpunkt
+## Start
+1. Kopiera `.env.example` till `.env`
+2. Lägg in `VITE_SUPABASE_URL` och `VITE_SUPABASE_ANON_KEY`
+3. Kör:
 
-## Struktur
-- backend/ API
-- database/ SQL schema
-# Fordonskontroll
+```bash
+npm install
+npm run dev
+```
 
-App för fordons- och materialkontroller inom räddningstjänst.
+## Ingår
+- fordonslista
+- intervall: dag, vecka, månad, kvartal
+- checklista med instruktioner
+- kommentar per punkt
+- spara kontroll
+- mockdata om Supabase inte är kopplat ännu
 
-## Funktioner
-- Daglig kontroll
-- Veckokontroll
-- Månadskontroll
-- Kvartalskontroll
-- Avvikelser
-- Instruktioner och video per kontrollpunkt
-
-## Struktur
-- backend/ API
-- database/ SQL schema
+## Nästa steg
+- Supabase Auth
+- riktig inspektionslogik mot tabellerna
+- avvikelseskapande
+- uppladdning av foto/video
+- instruktionsfilmer från Storage
