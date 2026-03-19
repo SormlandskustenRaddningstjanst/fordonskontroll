@@ -66,3 +66,19 @@ export async function completeInspection(inspectionId: string) {
 
   if (error) throw error;
 }
+
+export async function createDeviationFromFailedResult(
+  inspectionResultId: string
+) {
+  const { data, error } = await supabase.rpc(
+    "create_deviation_from_failed_result",
+    {
+      p_inspection_result_id: inspectionResultId,
+      p_priority: "NORMAL",
+      p_responsible_user_id: null,
+    }
+  );
+
+  if (error) throw error;
+  return data;
+}
