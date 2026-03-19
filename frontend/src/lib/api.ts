@@ -67,6 +67,29 @@ export async function completeInspection(inspectionId: string) {
   if (error) throw error;
 }
 
+export async function getTemplateWithItems(templateCode: string) {
+  const { data: template, error: templateError } = await supabase
+    .from("checklist_templates")
+    .select("*")
+    .eq("code", templateCode)
+    .single();
+
+  if (templateError) throw templateError;
+
+  const { data: items, error: itemsError } = await supabase
+    .from("checklist_items")
+    .select(`
+      *,
+      checklist_item_media (*)
+    `)
+    .eq("template_id", template.id)
+    .order("sort_order", { ascending: true });
+
+  if (itemsError) throw itemsError;
+
+  return { template, items };
+}
+
 export async function createDeviationFromFailedResult(
   inspectionResultId: string
 ) {
