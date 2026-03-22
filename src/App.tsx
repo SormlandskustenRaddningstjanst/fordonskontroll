@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL as string,
-  import.meta.env.VITE_SUPABASE_ANON_KEY as string
-);
+const url = import.meta.env.VITE_SUPABASE_URL as string;
+const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+
+const supabase = createClient(url, key);
 
 type Vehicle = {
   id: string;
@@ -16,68 +16,60 @@ type Vehicle = {
 
 export default function App() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [debug, setDebug] = useState("");
 
   useEffect(() => {
     loadVehicles();
   }, []);
 
   async function loadVehicles() {
-    setLoading(true);
-    setError("");
+    try {
+      setError("");
+      setDebug(
+        `URL=${url || "saknas"} | KEY=${key ? "ok" : "saknas"} | ONLINE=${navigator.onLine}`
+      );
 
-    const { data, error } = await supabase
-      .from("vehicles")
-      .select("id, name, call_sign, registration_number, status")
-      .order("name", { ascending: true });
+      const { data, error } = await supabase
+        .from("vehicles")
+        .select("id, name, call_sign, registration_number, status")
+        .limit(10);
 
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
+      if (error) {
+        setError(`Supabase-fel: ${error.message}`);
+        return;
+      }
+
+      setVehicles(data ?? []);
+    } catch (e: any) {
+      setError(`Nätverksfel: ${e?.message || "okänt fel"}`);
     }
-
-    setVehicles(data ?? []);
-    setLoading(false);
   }
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#f3f4f6",
-        padding: 16,
-        fontFamily: "Arial, sans-serif",
-      }}
-    >
-      <div style={{ maxWidth: 720, margin: "0 auto" }}>
-        <h1>Fordonskontroll</h1>
-        <p>Fordon från Supabase</p>
+    <div style={{ padding: 20, fontFamily: "Arial, sans-serif" }}>
+      <h1>Fordonskontroll</h1>
+      <p>Fordon från Supabase</p>
+      <p>{debug}</p>
+      {error ? <p style={{ color: "crimson" }}>{error}</p> : null}
 
-        {loading ? <p>Laddar...</p> : null}
-        {error ? <p style={{ color: "crimson" }}>Fel: {error}</p> : null}
-
-        <div style={{ display: "grid", gap: 12 }}>
-          {vehicles.map((vehicle) => (
-            <div
-              key={vehicle.id}
-              style={{
-                background: "#fff",
-                borderRadius: 12,
-                padding: 16,
-                boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
-              }}
-            >
-              <div style={{ fontSize: 20, fontWeight: 700 }}>
-                {vehicle.name}
-              </div>
-              <div>Anrop: {vehicle.call_sign ?? "-"}</div>
-              <div>Regnr: {vehicle.registration_number ?? "-"}</div>
-              <div>Status: {vehicle.status ?? "-"}</div>
-            </div>
-          ))}
-        </div>
+      <div style={{ display: "grid", gap: 12 }}>
+        {vehicles.map((v) => (
+          <div
+            key={v.id}
+            style={{
+              background: "#fff",
+              borderRadius: 12,
+              padding: 16,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+            }}
+          >
+            <strong>{v.name}</strong>
+            <div>Anrop: {v.call_sign ?? "-"}</div>
+            <div>Regnr: {v.registration_number ?? "-"}</div>
+            <div>Status: {v.status ?? "-"}</div>
+          </div>
+        ))}
       </div>
     </div>
   );
