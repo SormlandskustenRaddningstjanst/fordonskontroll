@@ -1,21 +1,13 @@
-// src/app.tsx
 import React, { useEffect, useState } from 'react';
-import { createClient, SupabaseClient, Session, User } from '@supabase/supabase-js';
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
-
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error('Missing Supabase environment variables. Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set.');
-}
-
-const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+import { supabase } from './supabaseClient';
+import type { Session, User } from '@supabase/supabase-js';
 
 type Vehicle = {
   id: string;
   make?: string | null;
   model?: string | null;
   year?: number | null;
+  created_at?: string | null;
   [key: string]: any;
 };
 
@@ -28,24 +20,23 @@ export default function App(): JSX.Element {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  // Init: check active session & subscribe to auth changes
   useEffect(() => {
-    const s = supabase.auth.getSession().then(({ data }) => {
+    (async () => {
+      const { data } = await supabase.auth.getSession();
       setSession(data.session ?? null);
       setUser(data.session?.user ?? null);
-    });
+    })();
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, currentSession) => {
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
     });
 
     return () => {
-      listener.subscription.unsubscribe();
+      sub.subscription.unsubscribe();
     };
   }, []);
 
-  // Fetch vehicles only when authenticated
   useEffect(() => {
     if (user) {
       fetchVehicles();
@@ -65,9 +56,7 @@ export default function App(): JSX.Element {
         .order('created_at', { ascending: false })
         .limit(100);
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
       setVehicles(data ?? []);
     } catch (err: any) {
       console.error('Error fetching vehicles:', err);
@@ -80,11 +69,11 @@ export default function App(): JSX.Element {
   async function signInWithEmail() {
     setMessage(null);
     try {
-      const { error } = await supabase.auth.signInWithOtp({ email }); // magic link by default
+      const { error } = await supabase.auth.signInWithOtp({ email });
       if (error) throw error;
-      setMessage('Magic link sent to your email. Check your inbox.');
+      setMessage('Magic link sent. Check your email.');
     } catch (err: any) {
-      console.error('Sign in error:', err);
+      console.error(err);
       setMessage(err.message ?? 'Failed to send magic link.');
     }
   }
@@ -94,11 +83,11 @@ export default function App(): JSX.Element {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+      setMessage('Signed in.');
       setSession(data.session ?? null);
       setUser(data.user ?? null);
-      setMessage('Signed in.');
     } catch (err: any) {
-      console.error('Password sign in error:', err);
+      console.error(err);
       setMessage(err.message ?? 'Failed to sign in.');
     }
   }
@@ -108,11 +97,11 @@ export default function App(): JSX.Element {
     try {
       const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
-      setMessage('Signup initiated. Check your email for confirmation if required.');
+      setMessage('Sign up initiated. Check email if confirmation is required.');
       setSession(data.session ?? null);
       setUser(data.user ?? null);
     } catch (err: any) {
-      console.error('Sign up error:', err);
+      console.error(err);
       setMessage(err.message ?? 'Failed to sign up.');
     }
   }
@@ -125,7 +114,6 @@ export default function App(): JSX.Element {
     setMessage('Signed out.');
   }
 
-  // Simple UI
   return (
     <div style={{ maxWidth: 900, margin: '2rem auto', fontFamily: 'system-ui, sans-serif' }}>
       <h1>Supabase + React (Vite) — Vehicles</h1>
@@ -136,10 +124,10 @@ export default function App(): JSX.Element {
             <p>
               Signed in as <strong>{user.email}</strong>
             </p>
-            <button onClick={signOut}>Sign out</button>
-            <button onClick={fetchVehicles} style={{ marginLeft: 8 }}>
-              Refresh Vehicles
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={signOut}>Sign out</button>
+              <button onClick={fetchVehicles}>Refresh Vehicles</button>
+            </div>
           </div>
         ) : (
           <div>
@@ -166,8 +154,7 @@ export default function App(): JSX.Element {
               <button onClick={signUpWithPassword}>Sign Up</button>
             </div>
             <p style={{ marginTop: 8, color: '#555' }}>
-              Note: after we changed policies, anonymous/public access is blocked — you must be signed in to read the
-              vehicles table.
+              Note: anonymous/public access is blocked — sign in to read the vehicles table.
             </p>
           </div>
         )}
