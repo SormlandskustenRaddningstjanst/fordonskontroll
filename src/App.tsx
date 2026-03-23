@@ -1,70 +1,46 @@
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = "https://rsmuycbunjxixlglrwc.supabase.co";
 const SUPABASE_KEY = "sb_publishable_yAMBMuHdzyyBYlTpa9KbaA_zvie9vJE";
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
 export default function App() {
-  const [vehicles, setVehicles] = useState([]);
   const [statusText, setStatusText] = useState("Startar...");
-  const [errorText, setErrorText] = useState("");
+  const [bodyText, setBodyText] = useState("");
 
   useEffect(() => {
-    loadVehicles();
+    runTest();
   }, []);
 
-  async function loadVehicles() {
+  async function runTest() {
     try {
-      setStatusText("Hämtar fordon...");
+      setStatusText("Testar direkt fetch mot Supabase REST...");
 
-      const { data, error, status, statusText } = await supabase
-        .from("vehicles")
-        .select("*")
-        .order("name", { ascending: true });
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/vehicles?select=id,name,call_sign,registration_number,status`,
+        {
+          method: "GET",
+          headers: {
+            apikey: SUPABASE_KEY,
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-      setStatusText(`HTTP ${status} ${statusText || ""}`.trim());
-
-      if (error) {
-        setErrorText(`Supabase-fel: ${error.message}`);
-        return;
-      }
-
-      setVehicles(data || []);
-      setStatusText(`Klart: ${data?.length || 0} fordon`);
-    } catch (e) {
-      setErrorText(`Nätverksfel: ${e.message}`);
-      setStatusText("Kunde inte nå Supabase");
+      const text = await res.text();
+      setStatusText(`HTTP ${res.status} ${res.statusText}`);
+      setBodyText(text);
+    } catch (e: any) {
+      setStatusText("FETCH FAIL");
+      setBodyText(e?.message || "okänt fel");
     }
   }
 
   return (
     <div style={{ padding: 20, fontFamily: "Arial, sans-serif" }}>
       <h1>Fordonskontroll</h1>
-      <p>Fordon från Supabase</p>
-
       <p>{statusText}</p>
-      {errorText && <p style={{ color: "crimson" }}>{errorText}</p>}
-
-      <div style={{ display: "grid", gap: 12 }}>
-        {vehicles.map((v) => (
-          <div
-            key={v.id}
-            style={{
-              background: "#fff",
-              borderRadius: 12,
-              padding: 16,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
-            }}
-          >
-            <strong>{v.name}</strong>
-            <div>Anrop: {v.call_sign || "-"}</div>
-            <div>Regnr: {v.registration_number || "-"}</div>
-            <div>Status: {v.status || "-"}</div>
-          </div>
-        ))}
-      </div>
+      <pre style={{ whiteSpace: "pre-wrap" }}>{bodyText}</pre>
     </div>
   );
 }
