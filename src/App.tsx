@@ -17,6 +17,7 @@ type Vehicle = {
 export default function App() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [error, setError] = useState("");
+  const [debug, setDebug] = useState("");
 
   useEffect(() => {
     loadVehicles();
@@ -24,19 +25,21 @@ export default function App() {
 
   async function loadVehicles() {
     try {
-      const { data, error } = await supabase
+      setDebug("Startar anrop mot Supabase...");
+      const { data, error, status, statusText } = await supabase
         .from("vehicles")
-        .select("id, name, call_sign, registration_number, status")
-        .order("name", { ascending: true });
+        .select("id, name, call_sign, registration_number, status");
+
+      setDebug(`HTTP ${status} ${statusText}`);
 
       if (error) {
-        setError(error.message);
+        setError(`Supabase-fel: ${error.message}`);
         return;
       }
 
       setVehicles(data ?? []);
     } catch (e: any) {
-      setError(e?.message || "Okänt fel");
+      setError(`Nätverksfel: ${e?.message || "okänt fel"}`);
     }
   }
 
@@ -44,8 +47,8 @@ export default function App() {
     <div style={{ padding: 20, fontFamily: "Arial, sans-serif" }}>
       <h1>Fordonskontroll</h1>
       <p>Fordon från Supabase</p>
-
-      {error ? <p style={{ color: "crimson" }}>Fel: {error}</p> : null}
+      <p>{debug}</p>
+      {error ? <p style={{ color: "crimson" }}>{error}</p> : null}
 
       <div style={{ display: "grid", gap: 12 }}>
         {vehicles.map((v) => (
@@ -55,7 +58,7 @@ export default function App() {
               background: "#fff",
               borderRadius: 12,
               padding: 16,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
             }}
           >
             <strong>{v.name}</strong>
