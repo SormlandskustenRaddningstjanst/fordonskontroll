@@ -1,144 +1,72 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "./lib/supabase";
 
 type Vehicle = {
   id: string;
   name: string;
-};
-
-const vehicles: Vehicle[] = [
-  { id: "1", name: "Släckbil 3010" },
-  { id: "2", name: "Släckbil 3030" },
-  { id: "3", name: "IL-bil 3080" },
-];
-
-const checklists: Record<string, string[]> = {
-  dag: [
-    "Kontrollera bränsle",
-    "Kontrollera olja",
-    "Kontrollera lampor",
-  ],
-  vecka: [
-    "Testa pumpar",
-    "Kontrollera slangar",
-    "Kontrollera batteri",
-  ],
-  månad: [
-    "Servicekontroll",
-    "Testa utrustning",
-    "Rengör fordon",
-  ],
-  kvartal: [
-    "Full genomgång",
-    "Säkerhetskontroll",
-    "Dokumentation",
-  ],
+  call_sign: string | null;
+  registration_number: string | null;
+  status: string | null;
 };
 
 export default function App() {
-  const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
-  const [selectedType, setSelectedType] = useState<string | null>(null);
-  const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [statusText, setStatusText] = useState("Startar...");
+  const [errorText, setErrorText] = useState("");
 
-  function toggle(item: string) {
-    setChecked((prev) => ({
-      ...prev,
-      [item]: !prev[item],
-    }));
+  useEffect(() => {
+    loadVehicles();
+  }, []);
+
+  async function loadVehicles() {
+    try {
+      setStatusText("Hämtar fordon...");
+
+      const { data, error, status, statusText } = await supabase
+        .from("vehicles")
+        .select("id, name, call_sign, registration_number, status")
+        .order("name", { ascending: true });
+
+      setStatusText(`HTTP ${status} ${statusText || ""}`.trim());
+
+      if (error) {
+        setErrorText(`Supabase-fel: ${error.message}`);
+        return;
+      }
+
+      setVehicles(data ?? []);
+      setStatusText(`Klart: ${data?.length ?? 0} fordon`);
+    } catch (e: any) {
+      setErrorText(`Nätverksfel: ${e?.message || "okänt fel"}`);
+      setStatusText("Kunde inte nå Supabase");
+    }
   }
 
   return (
-    <div style={{ padding: 16, fontFamily: "Arial" }}>
+    <div style={{ padding: 20, fontFamily: "Arial, sans-serif" }}>
       <h1>Fordonskontroll</h1>
+      <p>Fordon från Supabase</p>
+      <p>{statusText}</p>
+      {errorText ? <p style={{ color: "crimson" }}>{errorText}</p> : null}
 
-      {/* Välj fordon */}
-      <h3>Välj fordon</h3>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {vehicles.map((v) => (
-          <button
-            key={v.id}
-            onClick={() => {
-              setSelectedVehicle(v.id);
-              setChecked({});
-            }}
+      <div style={{ display: "grid", gap: 12 }}>
+        {vehicles.map((vehicle) => (
+          <div
+            key={vehicle.id}
             style={{
-              padding: 10,
-              borderRadius: 8,
-              border: selectedVehicle === v.id ? "2px solid green" : "1px solid #ccc",
               background: "#fff",
+              borderRadius: 12,
+              padding: 16,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
             }}
           >
-            {v.name}
-          </button>
+            <strong>{vehicle.name}</strong>
+            <div>Anrop: {vehicle.call_sign ?? "-"}</div>
+            <div>Regnr: {vehicle.registration_number ?? "-"}</div>
+            <div>Status: {vehicle.status ?? "-"}</div>
+          </div>
         ))}
       </div>
-
-      {/* Välj typ */}
-      {selectedVehicle && (
-        <>
-          <h3 style={{ marginTop: 20 }}>Typ av kontroll</h3>
-          <div style={{ display: "flex", gap: 8 }}>
-            {["dag", "vecka", "månad", "kvartal"].map((type) => (
-              <button
-                key={type}
-                onClick={() => {
-                  setSelectedType(type);
-                  setChecked({});
-                }}
-                style={{
-                  padding: 10,
-                  borderRadius: 8,
-                  border:
-                    selectedType === type
-                      ? "2px solid blue"
-                      : "1px solid #ccc",
-                  background: "#fff",
-                }}
-              >
-                {type}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* Checklista */}
-      {selectedType && (
-        <>
-          <h3 style={{ marginTop: 20 }}>Checklista</h3>
-          <div style={{ display: "grid", gap: 10 }}>
-            {checklists[selectedType].map((item) => (
-              <label
-                key={item}
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  padding: 10,
-                  background: "#fff",
-                  borderRadius: 8,
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={checked[item] || false}
-                  onChange={() => toggle(item)}
-                />
-                {item}
-              </label>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* Klar-status */}
-      {selectedType && (
-        <p style={{ marginTop: 20 }}>
-          Klara:{" "}
-          {
-            Object.values(checked).filter(Boolean).length
-          }{" "}
-          / {checklists[selectedType].length}
-        </p>
-      )}
     </div>
   );
 }
