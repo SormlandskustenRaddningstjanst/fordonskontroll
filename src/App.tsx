@@ -11,7 +11,7 @@ type Vehicle = {
 
 export default function App() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [statusText, setStatusText] = useState("Startar...");
+  const [statusText, setStatusText] = useState("VERSION LIVE 2118");
   const [errorText, setErrorText] = useState("");
 
   useEffect(() => {
@@ -20,14 +20,12 @@ export default function App() {
 
   async function loadVehicles() {
     try {
-      setStatusText("Hämtar fordon...");
+      setStatusText("Hämtar fordon från Supabase...");
 
-      const { data, error, status, statusText } = await supabase
+      const { data, error } = await supabase
         .from("vehicles")
         .select("id, name, call_sign, registration_number, status")
         .order("name", { ascending: true });
-
-      setStatusText(`HTTP ${status} ${statusText || ""}`.trim());
 
       if (error) {
         setErrorText(`Supabase-fel: ${error.message}`);
@@ -38,14 +36,12 @@ export default function App() {
       setStatusText(`Klart: ${data?.length ?? 0} fordon`);
     } catch (e: any) {
       setErrorText(`Nätverksfel: ${e?.message || "okänt fel"}`);
-      setStatusText("Kunde inte nå Supabase");
     }
   }
 
   return (
     <div style={{ padding: 20, fontFamily: "Arial, sans-serif" }}>
       <h1>Fordonskontroll</h1>
-      <p>Fordon från Supabase</p>
       <p>{statusText}</p>
       {errorText ? <p style={{ color: "crimson" }}>{errorText}</p> : null}
 
