@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL as string,
-  import.meta.env.VITE_SUPABASE_ANON_KEY as string
-);
+// ⚠️ TEMP: hårdkoda för att säkerställa att det funkar
+const SUPABASE_URL = "https://rsmuycbunjxixlglrwc.supabase.co";
+const SUPABASE_KEY = "DIN_ANON_KEY_HÄR"; // ← klistra in din riktiga key
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 type Vehicle = {
   id: string;
@@ -25,21 +26,26 @@ export default function App() {
 
   async function loadVehicles() {
     try {
-      setDebug("Startar anrop mot Supabase...");
-      const { data, error, status, statusText } = await supabase
+      setDebug("🔄 Hämtar data...");
+
+      const { data, error } = await supabase
         .from("vehicles")
         .select("id, name, call_sign, registration_number, status");
 
-      setDebug(`HTTP ${status} ${statusText}`);
-
       if (error) {
-        setError(`Supabase-fel: ${error.message}`);
+        setError("Supabase-fel: " + error.message);
         return;
       }
 
-      setVehicles(data ?? []);
+      if (!data || data.length === 0) {
+        setDebug("⚠️ Inga fordon hittades");
+      } else {
+        setDebug(`✅ ${data.length} fordon hämtade`);
+      }
+
+      setVehicles(data || []);
     } catch (e: any) {
-      setError(`Nätverksfel: ${e?.message || "okänt fel"}`);
+      setError("Nätverksfel: " + e.message);
     }
   }
 
@@ -47,8 +53,10 @@ export default function App() {
     <div style={{ padding: 20, fontFamily: "Arial, sans-serif" }}>
       <h1>Fordonskontroll</h1>
       <p>Fordon från Supabase</p>
+
       <p>{debug}</p>
-      {error ? <p style={{ color: "crimson" }}>{error}</p> : null}
+
+      {error && <p style={{ color: "crimson" }}>{error}</p>}
 
       <div style={{ display: "grid", gap: 12 }}>
         {vehicles.map((v) => (
