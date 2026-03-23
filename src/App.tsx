@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-// ⚠️ TEMP: hårdkoda för att säkerställa att det funkar
 const SUPABASE_URL = "https://rsmuycbunjxixlglrwc.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzbXV5Y2J1bmp4aXhsa2dscndjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDY0NjksImV4cCI6MjA4OTQyMjQ2OX0.VV56N9CLuL1QELcq6CPYV3eOHiyfP0LEwR4kRJwEsMM"
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzbXV5Y2J1bmp4aXhsa2dscndjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDY0NjksImV4cCI6MjA4OTQyMjQ2OX0.VV56N9CLuL1QELcq6CPYV3eOHiyfP0LEwR4kRJwEsMM";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -18,7 +17,7 @@ type Vehicle = {
 export default function App() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [error, setError] = useState("");
-  const [debug, setDebug] = useState("");
+  const [debug, setDebug] = useState("Startar app...");
 
   useEffect(() => {
     loadVehicles();
@@ -26,26 +25,24 @@ export default function App() {
 
   async function loadVehicles() {
     try {
-      setDebug("🔄 Hämtar data...");
+      setDebug("🔄 Hämtar data från Supabase...");
 
       const { data, error } = await supabase
         .from("vehicles")
-        .select("id, name, call_sign, registration_number, status");
+        .select("id, name, call_sign, registration_number, status")
+        .order("name", { ascending: true });
 
       if (error) {
         setError("Supabase-fel: " + error.message);
+        setDebug("❌ Supabase svarade med fel");
         return;
       }
 
-      if (!data || data.length === 0) {
-        setDebug("⚠️ Inga fordon hittades");
-      } else {
-        setDebug(`✅ ${data.length} fordon hämtade`);
-      }
-
       setVehicles(data || []);
+      setDebug(`✅ ${data?.length ?? 0} fordon hämtade`);
     } catch (e: any) {
-      setError("Nätverksfel: " + e.message);
+      setError("Nätverksfel: " + (e?.message || "okänt fel"));
+      setDebug("❌ Anropet nådde inte Supabase");
     }
   }
 
@@ -56,7 +53,7 @@ export default function App() {
 
       <p>{debug}</p>
 
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
+      {error ? <p style={{ color: "crimson" }}>{error}</p> : null}
 
       <div style={{ display: "grid", gap: 12 }}>
         {vehicles.map((v) => (
