@@ -1,232 +1,199 @@
+// src/app.tsx
 import React, { useEffect, useState } from 'react';
-import { supabase } from './supabaseClient';
+import { createClient, SupabaseClient, Session, User } from '@supabase/supabase-js';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  throw new Error('Missing Supabase environment variables. Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set.');
+}
+
+const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 type Vehicle = {
   id: string;
-  make: string;
-  model: string;
-  owner: string;
+  make?: string | null;
+  model?: string | null;
+  year?: number | null;
+  [key: string]: any;
 };
 
 export default function App(): JSX.Element {
-  const [user, setUser] = useState(supabase.auth.getUser ? null : null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [make, setMake] = useState('');
-  const [model, setModel] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  // Get initial auth state
+  // Init: check active session & subscribe to auth changes
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!mounted) return;
-      setUser(user ?? null);
-    })();
+    const s = supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session ?? null);
+      setUser(data.session?.user ?? null);
+    });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
     });
 
     return () => {
-      mounted = false;
       listener.subscription.unsubscribe();
     };
   }, []);
 
-  // Fetch vehicles for current user
+  // Fetch vehicles only when authenticated
   useEffect(() => {
-    if (!user) {
+    if (user) {
+      fetchVehicles();
+    } else {
       setVehicles([]);
-      return;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
-    let mounted = true;
-    const fetchVehicles = async () => {
-      setLoading(true);
+  async function fetchVehicles() {
+    setLoading(true);
+    setMessage(null);
+    try {
       const { data, error } = await supabase
         .from<Vehicle>('vehicles')
         .select('*')
-        .eq('owner', user.id)
-        .order('created_at', { ascending: false });
-      setLoading(false);
+        .order('created_at', { ascending: false })
+        .limit(100);
+
       if (error) {
-        setMessage(error.message);
-        return;
+        throw error;
       }
-      if (mounted && data) setVehicles(data);
-    };
-    fetchVehicles();
+      setVehicles(data ?? []);
+    } catch (err: any) {
+      console.error('Error fetching vehicles:', err);
+      setMessage(err.message ?? String(err));
+    } finally {
+      setLoading(false);
+    }
+  }
 
-    // Realtime subscription
-    const channel = supabase.channel(`public:vehicles:owner=${user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicles', filter: `owner=eq.${user.id}` }, (payload) => {
-        // Simple handling: refetch on changes
-        fetchVehicles();
-      })
-      .subscribe();
-
-    return () => {
-      mounted = false;
-      channel.unsubscribe();
-    };
-  }, [user]);
-
-  const signIn = async (e: React.FormEvent) => {
-    e.preventDefault();
+  async function signInWithEmail() {
     setMessage(null);
-    const { error } = await supabase.auth.signInWithOtp({ email });
-    if (error) setMessage(error.message);
-    else setMessage('Check your email for the login link.');
-  };
+    try {
+      const { error } = await supabase.auth.signInWithOtp({ email }); // magic link by default
+      if (error) throw error;
+      setMessage('Magic link sent to your email. Check your inbox.');
+    } catch (err: any) {
+      console.error('Sign in error:', err);
+      setMessage(err.message ?? 'Failed to send magic link.');
+    }
+  }
 
-  const signOut = async () => {
+  async function signInWithPassword() {
+    setMessage(null);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      setSession(data.session ?? null);
+      setUser(data.user ?? null);
+      setMessage('Signed in.');
+    } catch (err: any) {
+      console.error('Password sign in error:', err);
+      setMessage(err.message ?? 'Failed to sign in.');
+    }
+  }
+
+  async function signUpWithPassword() {
+    setMessage(null);
+    try {
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) throw error;
+      setMessage('Signup initiated. Check your email for confirmation if required.');
+      setSession(data.session ?? null);
+      setUser(data.user ?? null);
+    } catch (err: any) {
+      console.error('Sign up error:', err);
+      setMessage(err.message ?? 'Failed to sign up.');
+    }
+  }
+
+  async function signOut() {
     await supabase.auth.signOut();
+    setSession(null);
     setUser(null);
     setVehicles([]);
-  };
+    setMessage('Signed out.');
+  }
 
-  const createVehicle = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!user) {
-      setMessage('Sign in first');
-      return;
-    }
-    if (!make || !model) {
-      setMessage('Make and model are required');
-      return;
-    }
-    setLoading(true);
-    const { error } = await supabase.from('vehicles').insert([
-      { make, model, owner: user.id },
-    ]);
-    setLoading(false);
-    if (error) setMessage(error.message);
-    else {
-      setMake('');
-      setModel('');
-      setMessage('Vehicle created');
-      // refetch done by realtime subscription / effect
-    }
-  };
-
-  const deleteVehicle = async (id: string) => {
-    setLoading(true);
-    const { error } = await supabase.from('vehicles').delete().eq('id', id);
-    setLoading(false);
-    if (error) setMessage(error.message);
-    else setMessage('Vehicle deleted');
-  };
-
+  // Simple UI
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <div className="max-w-3xl mx-auto bg-white shadow rounded p-6">
-        <header className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-semibold">Vehicles App</h1>
+    <div style={{ maxWidth: 900, margin: '2rem auto', fontFamily: 'system-ui, sans-serif' }}>
+      <h1>Supabase + React (Vite) — Vehicles</h1>
+
+      <section style={{ marginBottom: 20, padding: 16, border: '1px solid #eee', borderRadius: 8 }}>
+        {user ? (
           <div>
-            {user ? (
-              <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-600">Signed in as {user.email}</span>
-                <button
-                  onClick={signOut}
-                  className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-                >
-                  Sign out
-                </button>
-              </div>
-            ) : (
-              <span className="text-sm text-gray-600">Not signed in</span>
-            )}
+            <p>
+              Signed in as <strong>{user.email}</strong>
+            </p>
+            <button onClick={signOut}>Sign out</button>
+            <button onClick={fetchVehicles} style={{ marginLeft: 8 }}>
+              Refresh Vehicles
+            </button>
           </div>
-        </header>
-
-        {message && (
-          <div className="mb-4 text-sm text-blue-600">
-            {message}
-          </div>
-        )}
-
-        {!user ? (
-          <form onSubmit={signIn} className="space-y-4 mb-6">
-            <label className="block">
-              <span className="text-sm font-medium text-gray-700">Email</span>
+        ) : (
+          <div>
+            <h2>Sign in</h2>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
               <input
                 type="email"
-                required
+                placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full border rounded px-3 py-2"
-                placeholder="you@example.com"
+                style={{ padding: 8, flex: 1 }}
               />
-            </label>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              Send Magic Link
-            </button>
-          </form>
-        ) : (
-          <div className="mb-6">
-            <form onSubmit={createVehicle} className="grid grid-cols-2 gap-3 items-end">
-              <div>
-                <label className="block text-sm text-gray-700">Make</label>
-                <input
-                  value={make}
-                  onChange={(e) => setMake(e.target.value)}
-                  className="mt-1 block w-full border rounded px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-700">Model</label>
-                <input
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  className="mt-1 block w-full border rounded px-3 py-2"
-                />
-              </div>
-              <div className="col-span-2">
-                <button
-                  onClick={createVehicle}
-                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                >
-                  {loading ? 'Saving...' : 'Create Vehicle'}
-                </button>
-              </div>
-            </form>
+              <input
+                type="password"
+                placeholder="Password (optional)"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={{ padding: 8, width: 220 }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={signInWithEmail}>Send Magic Link</button>
+              <button onClick={signInWithPassword}>Sign In (password)</button>
+              <button onClick={signUpWithPassword}>Sign Up</button>
+            </div>
+            <p style={{ marginTop: 8, color: '#555' }}>
+              Note: after we changed policies, anonymous/public access is blocked — you must be signed in to read the
+              vehicles table.
+            </p>
           </div>
         )}
+      </section>
 
-        <section>
-          <h2 className="text-xl font-medium mb-3">My Vehicles</h2>
-          {loading && <div className="text-sm text-gray-500">Loading...</div>}
-          {!loading && vehicles.length === 0 && (
-            <div className="text-sm text-gray-500">No vehicles yet.</div>
-          )}
-          <ul className="space-y-3">
-            {vehicles.map((v) => (
-              <li key={v.id} className="flex items-center justify-between border rounded p-3">
-                <div>
-                  <div className="font-semibold">{v.make} {v.model}</div>
-                  <div className="text-xs text-gray-500">id: {v.id}</div>
-                </div>
-                <div>
-                  <button
-                    onClick={() => deleteVehicle(v.id)}
-                    className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-      </div>
+      <section style={{ padding: 16, border: '1px solid #eee', borderRadius: 8 }}>
+        <h2>Vehicles</h2>
+        {message && <p style={{ color: 'crimson' }}>{message}</p>}
+        {loading ? (
+          <p>Loading...</p>
+        ) : user ? (
+          vehicles.length ? (
+            <ul>
+              {vehicles.map((v) => (
+                <li key={v.id}>
+                  <strong>{v.make ?? '—'}</strong> {v.model ?? ''} {v.year ? `(${v.year})` : ''}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No vehicles found.</p>
+          )
+        ) : (
+          <p>Please sign in to view vehicles.</p>
+        )}
+      </section>
     </div>
   );
 }
