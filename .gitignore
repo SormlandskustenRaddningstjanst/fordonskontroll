@@ -1,14 +1,71 @@
-# Node
-node_modules
-
-# Build
-dist
-
-# Env (VIKTIGT)
+# Environment files
 .env
+.env.local
+.env.*.local
+
+# Node modules
+node_modules/
+.pnp/
+.pnp.js
+
+# Production build
+dist/
+.build/
+out/
+
+# Vite
+.vite
+
+# npm/yarn/pnpm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
 # Logs
-npm-debug.log*
+logs/
+*.log
+*.log.*
 
-# Mac
+# OS files
 .DS_Store
+Thumbs.db
+
+# IDEs and editors
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# TypeScript
+*.tsbuildinfo
+
+# Local env for terminals
+.local/
+
+# Lockfiles (keep whichever you use)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Mac specific
+.AppleDouble
+.LSOverride
+
+# Misc
+coverage/
+.cache/
+.report/
+
+# Docker
+docker-compose.override.yml
+.env.docker
+
+# Optional: ignore service role key files if stored locally
+supabase_service_role_key.txt
+service_role_key.env
