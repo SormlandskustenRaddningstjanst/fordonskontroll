@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = "https://rsmuycbunjxixlglrwc.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzbXV5Y2J1bmp4aXhsa2dscndjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDY0NjksImV4cCI6MjA4OTQyMjQ2OX0.VV56N9CLuL1QELcq6CPYV3eOHiyfP0LEwR4kRJwEsMM";
+const SUPABASE_KEY = "KLISTRA_IN_NY_ROTATERAD_ANON_KEY_HÄR";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -16,33 +16,43 @@ type Vehicle = {
 
 export default function App() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [error, setError] = useState("");
   const [debug, setDebug] = useState("Startar app...");
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    loadVehicles();
+    runTest();
   }, []);
 
-  async function loadVehicles() {
+  async function runTest() {
     try {
-      setDebug("🔄 Hämtar data från Supabase...");
+      setDebug("Testar anslutning...");
 
-      const { data, error } = await supabase
-        .from("vehicles")
-        .select("id, name, call_sign, registration_number, status")
-        .order("name", { ascending: true });
+      const restUrl = `${SUPABASE_URL}/rest/v1/vehicles?select=id,name,call_sign,registration_number,status`;
 
-      if (error) {
-        setError("Supabase-fel: " + error.message);
-        setDebug("❌ Supabase svarade med fel");
+      const res = await fetch(restUrl, {
+        method: "GET",
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      setDebug(`HTTP ${res.status} ${res.statusText}`);
+
+      const text = await res.text();
+
+      if (!res.ok) {
+        setError(`REST-fel: ${text}`);
         return;
       }
 
-      setVehicles(data || []);
-      setDebug(`✅ ${data?.length ?? 0} fordon hämtade`);
+      const parsed = JSON.parse(text) as Vehicle[];
+      setVehicles(parsed);
+      setDebug(`✅ ${parsed.length} fordon hämtade`);
     } catch (e: any) {
-      setError("Nätverksfel: " + (e?.message || "okänt fel"));
-      setDebug("❌ Anropet nådde inte Supabase");
+      setError(`Nätverksfel: ${e?.message || "okänt fel"}`);
+      setDebug("❌ Kunde inte nå Supabase");
     }
   }
 
@@ -52,7 +62,6 @@ export default function App() {
       <p>Fordon från Supabase</p>
 
       <p>{debug}</p>
-
       {error ? <p style={{ color: "crimson" }}>{error}</p> : null}
 
       <div style={{ display: "grid", gap: 12 }}>
@@ -63,7 +72,7 @@ export default function App() {
               background: "#fff",
               borderRadius: 12,
               padding: 16,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+              boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
             }}
           >
             <strong>{v.name}</strong>
