@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 // ⚠️ TEMP: hårdkoda för att säkerställa att det funkar
-const SUPABASE_URL = "https://rsmuycbunjxixlglrwc.supabase.com";
+const SUPABASE_URL = "https://rsmuycbunjxixlglrwc.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzbXV5Y2J1bmp4aXhsa2dscndjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDY0NjksImV4cCI6MjA4OTQyMjQ2OX0.VV56N9CLuL1QELcq6CPYV3eOHiyfP0LEwR4kRJwEsMM"
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
